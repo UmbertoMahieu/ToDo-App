@@ -15,6 +15,21 @@ class DataManager:
         with get_session() as session:
             return session.query(Avatar).first()
 
+    def update_avatar_name(self, avatar_id, new_name):
+        with get_session() as session:
+            try:
+                avatar = session.query(Avatar).filter_by(id=avatar_id).first()
+                if not avatar:
+                    logger.error(f"Avatar with ID {avatar_id} not found.")
+                    return False
+                avatar.name = new_name
+                session.commit()
+                return True
+            except Exception as e:
+                session.rollback()
+                logger.exception(f"Error updating avatar name: {e}")
+                return False
+
     def get_categories(self):
         with get_session() as session:
             return session.query(Category).all()
