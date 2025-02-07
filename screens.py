@@ -8,7 +8,8 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivymd.uix.progressbar import MDProgressBar
 from kivymd.uix.bottomnavigation import MDBottomNavigationItem
-from widgets import ColoredBox
+from widgets import QuestBox
+from kivy.clock import Clock
 from dataManager import DataManager
 
 
@@ -85,12 +86,56 @@ class AvatarScreen(MDBottomNavigationItem):
         scroll_view.add_widget(self.layout)
         self.add_widget(scroll_view)
 
+    def refresh_avatar_view(self):
+        """Refreshes the avatar view UI properly."""
+        # Fetch updated avatar data
+        self.avatar = self.db.get_avatar()
+
+        # ✅ Update the actual UI elements, not just internal variables
+        self.avatar_label.text = f"{self.avatar.name}"
+        self.level_label.text = f"Level : {self.avatar.level}"
+
+        # Fetch the updated category experience
+        self.category_experience = self.db.get_avatar_experience_by_category(self.avatar.id)
+        # ✅ Ensure the progress bars update
+        for category in self.categories:
+            category_name = category.category_name  # Extract name for comparison
+            exp_points = float(self.category_experience.get(category_name, 0))
+            print(f"Category name = {category_name}")
+            print(f"exp_point = {exp_points}")
+
+
+            # Find the correct progress bar using category name
+            progress_bar = None
+            for cat, bar in self.category_bars.items():
+                if cat.category_name == category_name:
+                    progress_bar = bar
+                    break
+
+            if progress_bar:
+                category_layout = progress_bar.parent  # Get the parent layout
+                category_layout.remove_widget(progress_bar)  # Remove old progress bar
+
+                # Create a new progress bar
+                new_bar = MDProgressBar(
+                    value=exp_points,
+                    max=100,
+                    size_hint_x=0.6,
+                    size_hint_y=None,
+                    height=10
+                )
+                new_bar.pos_hint = {'center_y': 0.5}
+
+                category_layout.add_widget(new_bar)  # Add new progress bar
+                self.category_bars[category] = new_bar  # Update reference
+
 
 class QuestScreen(MDBottomNavigationItem):
-    def __init__(self, **kwargs):
+    def __init__(self,avatar_screen, **kwargs):
         super().__init__(**kwargs)
         self.name = 'quests'
         self.text = 'All Quests'
+        self.avatar_screen = avatar_screen
 
         # Data
         self.db = DataManager()
@@ -120,27 +165,27 @@ class QuestScreen(MDBottomNavigationItem):
 
     def add_quest_ui(self, quest_data):
         """Create a UI quest box from a quest dictionary."""
-        quest_box = ColoredBox(orientation='horizontal', size_hint_y=None, height=60, padding=10)
+        quest_box = QuestBox(quest_data['id'],orientation='horizontal', size_hint_y=None, height=60, padding=10)
 
         # Quest info
-        quest_label = MDLabel(text=quest_data["title"])
+        quest_label = MDLabel(text=quest_data["quest_name"])
         quest_box.add_widget(quest_label)
 
         date_label = MDLabel(text=quest_data["due_date"])
         quest_box.add_widget(date_label)
 
-        category_label = MDLabel(text=quest_data["category"])
+        category_label = MDLabel(text=quest_data["category_name"])
         quest_box.add_widget(category_label)
 
         exp_label = MDLabel(text=f"EXP: {quest_data['exp_amount']}", theme_text_color="Secondary")
         quest_box.add_widget(exp_label)
 
-        if quest_data["completed"] == True:
+        if quest_data["completed"]:
             quest_box.change_color(0, 1, 0)  # Green
 
         # Quest controls
         v_button = MDIconButton(icon="check-circle", pos_hint={'center_y': 0.5},
-                                on_release=lambda instance, box=quest_box: self.change_color(box, "green"))
+                                on_release=lambda instance, box=quest_box: self.change_status(box))
         quest_box.add_widget(v_button)
 
         delete_button = MDIconButton(icon="delete", pos_hint={'center_y': 0.5},
@@ -149,20 +194,28 @@ class QuestScreen(MDBottomNavigationItem):
 
         self.quest_list.add_widget(quest_box)
 
-    # def add_quest(self, quest_box):
-    #     """Add a quest box to the UI."""
-    #     self.quest_list.add_widget(quest_box)
-
     def remove_quest(self, quest_box):
         """Remove a quest box from the UI."""
         self.quest_list.remove_widget(quest_box)
+        self.db.swap_quest_status(quest_box.quest_id)
+        self.db.update_experience(quest_box.quest_id)
+        self.db.remove_quest(quest_box.quest_id)
+        self.avatar_screen.refresh_avatar_view()
 
-    def change_color(self, quest_box, color):
-        """Change quest color when completed or failed."""
-        if color == "green":
-            quest_box.change_color(0, 1, 0)  # Green
-        elif color == "red":
-            quest_box.change_color(1, 0, 0)  # Red
+
+
+    def change_status(self, quest_box):
+        self.db.swap_quest_status(quest_box.quest_id)
+        self.db.update_experience(quest_box.quest_id)
+        self.avatar_screen.refresh_avatar_view()
+        quest = self.db.get_quest_by_id(quest_box.quest_id)
+        if quest:
+            # Change color based on new status
+            if quest.completed:
+                quest_box.change_color(0, 1, 0)  # Green (Completed)
+            else:
+                quest_box.change_color(1, 1, 1)  # White (Not Completed)
+
 
 
 class AddQuestScreen(MDBottomNavigationItem):

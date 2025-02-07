@@ -1,94 +1,153 @@
-from database import get_session, Avatar, Category, AvatarCategory, Quest
+import logging
 import datetime
+from database import get_session, Avatar, Category, AvatarCategory, Quest
+
+# Configure logging
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
+
 
 class DataManager:
     def __init__(self):
         pass
 
     def get_avatar(self):
-        session = get_session()
-        avatar = session.query(Avatar).first()
-        session.close()
-        return avatar
+        with get_session() as session:
+            return session.query(Avatar).first()
 
     def get_categories(self):
-        session = get_session()
-        categories = session.query(Category).all()
-        session.close()
-        return categories
+        with get_session() as session:
+            return session.query(Category).all()
 
     def get_avatar_categories(self, avatar_id):
-        session = get_session()
-        avatar_categories = session.query(AvatarCategory).filter(AvatarCategory.avatar_id == avatar_id).all()
-        session.close()
-        return avatar_categories
+        with get_session() as session:
+            return session.query(AvatarCategory).filter(AvatarCategory.avatar_id == avatar_id).all()
 
     def get_avatar_experience_by_category(self, avatar_id):
-        session = get_session()
-        avatar_categories = session.query(AvatarCategory).filter(AvatarCategory.avatar_id == avatar_id).all()
+        with get_session() as session:
+            avatar_categories = session.query(AvatarCategory).filter(AvatarCategory.avatar_id == avatar_id).all()
+            return {
+                avatar_category.category.category_name: avatar_category.exp_points
+                for avatar_category in avatar_categories
+            }
 
-        category_experience = {
-            avatar_category.category.category_name: avatar_category.exp_points
-            for avatar_category in avatar_categories
-        }
+    def update_experience(self, quest_id):
+        with get_session() as session:
+            try:
+                # Fetch the quest
+                quest = session.query(Quest).filter_by(id=quest_id).first()
+                if not quest:
+                    logger.error(f"❌ Quest with ID {quest_id} not found.")
+                    return
 
-        session.close()
-        return category_experience
+                # Fetch the avatar-category relationship
+                avatar_category = session.query(AvatarCategory).filter_by(
+                    avatar_id=quest.avatar_id, category_id=quest.category_id
+                ).first()
 
-    def update_experience(self, avatar_id, category_name, new_exp_points):
-        session = get_session()
-        category = session.query(Category).filter(Category.category_name == category_name).first()
-        avatar_category = session.query(AvatarCategory).filter(
-            AvatarCategory.avatar_id == avatar_id,
-            AvatarCategory.category_id == category.id
-        ).first()
+                if not avatar_category:
+                    logger.error(
+                        f"⚠ AvatarCategory entry not found for Avatar {quest.avatar_id} and Category {quest.category_id}")
+                    return
 
-        if avatar_category:
-            avatar_category.exp_points = new_exp_points
-            session.commit()
-        session.close()
+                # Update experience based on quest completion status
+                if quest.completed:
+                    avatar_category.exp_points += quest.exp_amount
+                else:
+                    avatar_category.exp_points -= quest.exp_amount
+
+                session.commit()
+                logger.info(
+                    f"✅ Updated experience: Avatar {quest.avatar_id} - {avatar_category.exp_points} XP in Category {quest.category_id}")
+
+            except Exception as e:
+                logger.error(f"⚠ Error updating experience for Quest {quest_id}: {e}")
+                session.rollback()
+
+    def get_quest_by_id(self, quest_id):
+        with get_session() as session:
+            return session.query(Quest).filter_by(id=quest_id).first()
+
+    def swap_quest_status(self, quest_id):
+        """Toggles the quest's completion status and commits to the DB."""
+        with get_session() as session:
+            try:
+                logger.info(f"🔄 Fetching quest with ID {quest_id}")
+                quest = session.query(Quest).filter_by(id=quest_id).first()
+                if not quest:
+                    logger.error(f"❌ Quest not found.")
+                    return None
+
+                quest.completed = not quest.completed
+                logger.info(f"✅ Updated status: {quest.completed}")
+                session.commit()
+
+                return {
+                    "id": quest.id,
+                    "quest_name": quest.quest_name,
+                    'category_id': quest.category_id,
+                    "completed": quest.completed,
+                    "exp_amount": quest.exp_amount,
+                    "due_date": quest.due_date.isoformat() if quest.due_date else None
+                }
+
+            except Exception as e:
+                session.rollback()
+                logger.exception(f"⚠ Error updating quest status for : {e}")
+                return None
 
     def get_avatar_quests(self, avatar):
-        session = get_session()
-        Quests = session.query(Quest).filter(Quest.avatar_id == avatar.id).all()
-
-        quest_list = [
-            {
-                "id": Quest.id,
-                "title": Quest.quest_name,
-                "category": Quest.category.category_name,
-                "due_date": Quest.due_date.strftime('%Y-%m-%d') if Quest.due_date else "No date",
-                "exp_amount" : Quest.exp_amount,
-                "completed" : Quest.completed
-            }
-            for Quest in Quests
-        ]
-
-        session.close()
-        return quest_list
+        """Fetches all quests for a given avatar."""
+        with get_session() as session:
+            quests = session.query(Quest).filter_by(avatar_id=avatar.id).all()
+            return [
+                {
+                    "id": quest.id,
+                    "quest_name": quest.quest_name,
+                    "category_id": quest.category_id,
+                    "category_name": quest.category.category_name,
+                    "due_date": quest.due_date.strftime('%Y-%m-%d') if quest.due_date else "No date",
+                    "exp_amount": quest.exp_amount,
+                    "completed": quest.completed
+                }
+                for quest in quests
+            ]
 
     def add_quest(self, avatar_id, title, category_name, exp_amount, due_date=None):
-        """Adds a new quest to the database."""
-        session = get_session()
+        """Adds a new quest to the database safely."""
+        with get_session() as session:
+            try:
+                category = session.query(Category).filter_by(category_name=category_name).first()
+                if not category:
+                    logger.error(f"Category '{category_name}' not found.")
+                    return
 
-        # Find the category by name
-        category = session.query(Category).filter(Category.category_name == category_name).first()
-        if not category:
-            print(f"Category '{category_name}' not found.")
-            session.close()
-            return
+                new_quest = Quest(
+                    avatar_id=avatar_id,
+                    quest_name=title,
+                    category_id=category.id,
+                    due_date=datetime.datetime.strptime(due_date, '%Y-%m-%d') if due_date else None,
+                    exp_amount=exp_amount
+                )
 
-        # Create new quest
-        new_quest = Quest(
-            avatar_id=avatar_id,
-            quest_name=title,
-            category_id=category.id,
-            due_date=datetime.datetime.strptime(due_date, '%Y-%m-%d') if due_date else None,
-            exp_amount=exp_amount
-        )
+                session.add(new_quest)
+                session.commit()  # 🔥 Ajout de session.commit()
 
-        # Save quest to the database
-        session.add(new_quest)
-        session.commit()
-        session.close()
+            except Exception as e:
+                session.rollback()
+                logger.error(f"⚠ Error adding quest '{title}': {e}")
 
+    def remove_quest(self, quest_id):
+        with get_session() as session:
+            try:
+                quest = session.query(Quest).filter_by(id=quest_id).first()
+                if not quest:
+                    logger.error(f"Quest  ID '{quest_id}' not found.")
+                    return
+
+                session.delete(quest)
+                session.commit()  # 🔥 Ajout de session.commit()
+
+            except Exception as e:
+                session.rollback()
+                logger.error(f"⚠ Error adding quest : {e}")

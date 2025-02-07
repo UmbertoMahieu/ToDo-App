@@ -6,8 +6,8 @@ import database
 class ToDoApp(MDApp):
     def build(self):
         bottom_nav = MDBottomNavigation()
-        quest_screen = QuestScreen()
         avatar_screen = AvatarScreen()
+        quest_screen = QuestScreen(avatar_screen)
         bottom_nav.add_widget(avatar_screen)
         bottom_nav.add_widget(quest_screen)
         bottom_nav.add_widget(AddQuestScreen(quest_screen, avatar_screen))

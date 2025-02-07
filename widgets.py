@@ -1,9 +1,10 @@
 from kivy.uix.boxlayout import BoxLayout
 from kivy.graphics import Color, RoundedRectangle
 
-class ColoredBox(BoxLayout):
-    def __init__(self, **kwargs):
+class QuestBox(BoxLayout):
+    def __init__(self,quest_id, **kwargs):
         super().__init__(**kwargs)
+        self.quest_id = quest_id
         with self.canvas.before:
             self.color = Color(1, 1, 1, 1)
             self.rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[15])
