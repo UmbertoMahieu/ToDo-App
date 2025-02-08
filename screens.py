@@ -1,3 +1,4 @@
+from docutils.utils import column_indices
 from kivymd.uix.button import MDIconButton, MDRaisedButton
 from kivy.uix.boxlayout import BoxLayout
 from kivymd.uix.textfield import MDTextField
@@ -8,11 +9,21 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivymd.uix.progressbar import MDProgressBar
 from kivymd.uix.bottomnavigation import MDBottomNavigationItem
+from sqlalchemy import column
+
 from widgets import QuestBox
 from kivy.clock import Clock
 from dataManager import DataManager
 from kivy.uix.widget import Widget
 from kivymd.uix.button import MDIconButton
+
+from kivymd.uix.datatables import MDDataTable
+from kivymd.uix.button import MDIconButton
+from kivy.metrics import dp
+from kivy.uix.boxlayout import BoxLayout
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.button import MDRaisedButton
+
 
 class AvatarScreen(MDBottomNavigationItem):
     def __init__(self, **kwargs):
@@ -194,9 +205,95 @@ class AvatarScreen(MDBottomNavigationItem):
                 category_layout.add_widget(new_bar)  # Add new progress bar
                 self.category_bars[category] = new_bar  # Update reference
 
+#
+# class QuestScreen(MDBottomNavigationItem):
+#     def __init__(self,avatar_screen, **kwargs):
+#         super().__init__(**kwargs)
+#         self.name = 'quests'
+#         self.text = 'All Quests'
+#         self.avatar_screen = avatar_screen
+#
+#         # Data
+#         self.db = DataManager()
+#         self.avatar = self.db.get_avatar()
+#
+#         # UI
+#         self.layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+#
+#         self.quest_list = GridLayout(cols=1, spacing=5, size_hint_y=None)
+#         self.quest_list.bind(minimum_height=self.quest_list.setter('height'))
+#
+#         scroll_view = ScrollView(size_hint=(1, 1))
+#         scroll_view.add_widget(self.quest_list)
+#         self.layout.add_widget(scroll_view)
+#
+#         self.add_widget(self.layout)
+#
+#         self.load_quests()
+#
+#     def load_quests(self):
+#         """Fetch quests from the database and populate the UI."""
+#         self.quest_list.clear_widgets()  # Clear existing quests
+#         self.quests = self.db.get_avatar_quests(self.avatar)  # Fetch quests
+#
+#         for quest in self.quests:
+#             self.add_quest_ui(quest)
+#
+#     def add_quest_ui(self, quest_data):
+#         """Create a UI quest box from a quest dictionary."""
+#         quest_box = QuestBox(quest_data['id'],orientation='horizontal', size_hint_y=None, height=60, padding=10)
+#
+#         # Quest info
+#         quest_label = MDLabel(text=quest_data["quest_name"])
+#         quest_box.add_widget(quest_label)
+#
+#         date_label = MDLabel(text=quest_data["due_date"])
+#         quest_box.add_widget(date_label)
+#
+#         category_label = MDLabel(text=quest_data["category_name"])
+#         quest_box.add_widget(category_label)
+#
+#         exp_label = MDLabel(text=f"EXP: {quest_data['exp_amount']}", theme_text_color="Secondary")
+#         quest_box.add_widget(exp_label)
+#
+#         if quest_data["completed"]:
+#             quest_box.change_color(0, 1, 0)  # Green
+#
+#         # Quest controls
+#         v_button = MDIconButton(icon="check-circle", pos_hint={'center_y': 0.5},
+#                                 on_release=lambda instance, box=quest_box: self.change_status(box))
+#         quest_box.add_widget(v_button)
+#
+#         delete_button = MDIconButton(icon="delete", pos_hint={'center_y': 0.5},
+#                                      on_release=lambda instance, box=quest_box: self.remove_quest(box))
+#         quest_box.add_widget(delete_button)
+#
+#         self.quest_list.add_widget(quest_box)
+#
+#     def remove_quest(self, quest_box):
+#         """Remove a quest box from the UI."""
+#         self.quest_list.remove_widget(quest_box)
+#         self.db.swap_quest_status(quest_box.quest_id)
+#         self.db.update_experience(quest_box.quest_id)
+#         self.db.remove_quest(quest_box.quest_id)
+#         self.avatar_screen.refresh_avatar_view()
+#
+#
+#
+#     def change_status(self, quest_box):
+#         self.db.swap_quest_status(quest_box.quest_id)
+#         self.db.update_experience(quest_box.quest_id)
+#         self.avatar_screen.refresh_avatar_view()
+#         quest = self.db.get_quest_by_id(quest_box.quest_id)
+#         if quest:
+#             # Change color based on new status
+#             if quest.completed:
+#                 quest_box.change_color(0, 1, 0)  # Green (Completed)
+#             else:
+#                 quest_box.change_color(1, 1, 1)  # White (Not Completed)
 
 class QuestScreen(MDBottomNavigationItem):
-    def __init__(self,avatar_screen, **kwargs):
+    def __init__(self, avatar_screen, **kwargs):
         super().__init__(**kwargs)
         self.name = 'quests'
         self.text = 'All Quests'
@@ -206,80 +303,91 @@ class QuestScreen(MDBottomNavigationItem):
         self.db = DataManager()
         self.avatar = self.db.get_avatar()
 
-        # UI
+        # Layout
         self.layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
 
-        self.quest_list = GridLayout(cols=1, spacing=5, size_hint_y=None)
-        self.quest_list.bind(minimum_height=self.quest_list.setter('height'))
+        # Create Table
+        self.data_table = MDDataTable(
+            size_hint=(1, 0.9),  # Adjust table size
+            use_pagination=True,  # Enable pagination for large data sets
+            rows_num=5,  # Number of rows per page
+            column_data=[
+                ("ID", dp(10)),
+                ("Name", dp(50)),
+                ("Category", dp(20)),
+                ("Due Date", dp(30)),
+                ("EXP", dp(20)),
+                ("Actions", dp(15)),
+                ("", dp(7))
+            ],
+            row_data=[]  # Will be populated dynamically
+        )
 
-        scroll_view = ScrollView(size_hint=(1, 1))
-        scroll_view.add_widget(self.quest_list)
-        self.layout.add_widget(scroll_view)
-
+        # Add table to layout
+        self.data_table.bind(on_row_press=self.on_row_click)
+        self.layout.add_widget(self.data_table)
         self.add_widget(self.layout)
 
+        # Load data
         self.load_quests()
 
     def load_quests(self):
-        """Fetch quests from the database and populate the UI."""
-        self.quest_list.clear_widgets()  # Clear existing quests
+        """Fetch quests from the database and populate the table."""
+        self.data_table.row_data = []  # Clear existing data
         self.quests = self.db.get_avatar_quests(self.avatar)  # Fetch quests
 
         for quest in self.quests:
-            self.add_quest_ui(quest)
+            quest_id = quest["id"]
+            row = (
+                str(quest_id),  # ID
+                quest["quest_name"],  # Name
+                quest["category_name"],  # Category
+                quest["due_date"],  # Due Date
+                str(quest["exp_amount"]),  # EXP
+                ("check-circle", [0, 0.5, 0, 1], ""),
+                ("trash-can", [1, 0, 0, 1], "")
+            )
+            self.data_table.row_data.append(row)
 
-    def add_quest_ui(self, quest_data):
-        """Create a UI quest box from a quest dictionary."""
-        quest_box = QuestBox(quest_data['id'],orientation='horizontal', size_hint_y=None, height=60, padding=10)
+    def on_row_click(self, instance_table, instance_row):
+        """Handle row click actions for validation or deletion."""
+        row_num = int(instance_row.index / len(instance_table.column_data))
+        row_data = instance_table.row_data[row_num]
+        quest_id = int(row_data[0])  # First column contains the ID
 
-        # Quest info
-        quest_label = MDLabel(text=quest_data["quest_name"])
-        quest_box.add_widget(quest_label)
+        # Identify the clicked column index
+        clicked_column_index = instance_row.cells.index(instance_row)
 
-        date_label = MDLabel(text=quest_data["due_date"])
-        quest_box.add_widget(date_label)
+        if clicked_column_index == 5:  # Validate button column
+            self.validate_quest(quest_id)
+        elif clicked_column_index == 6:  # Delete button column
+            self.confirm_delete_quest(quest_id)
 
-        category_label = MDLabel(text=quest_data["category_name"])
-        quest_box.add_widget(category_label)
-
-        exp_label = MDLabel(text=f"EXP: {quest_data['exp_amount']}", theme_text_color="Secondary")
-        quest_box.add_widget(exp_label)
-
-        if quest_data["completed"]:
-            quest_box.change_color(0, 1, 0)  # Green
-
-        # Quest controls
-        v_button = MDIconButton(icon="check-circle", pos_hint={'center_y': 0.5},
-                                on_release=lambda instance, box=quest_box: self.change_status(box))
-        quest_box.add_widget(v_button)
-
-        delete_button = MDIconButton(icon="delete", pos_hint={'center_y': 0.5},
-                                     on_release=lambda instance, box=quest_box: self.remove_quest(box))
-        quest_box.add_widget(delete_button)
-
-        self.quest_list.add_widget(quest_box)
-
-    def remove_quest(self, quest_box):
-        """Remove a quest box from the UI."""
-        self.quest_list.remove_widget(quest_box)
-        self.db.swap_quest_status(quest_box.quest_id)
-        self.db.update_experience(quest_box.quest_id)
-        self.db.remove_quest(quest_box.quest_id)
+    def validate_quest(self, quest_id):
+        """Mark quest as completed and update UI."""
+        self.db.swap_quest_status(quest_id)
+        self.db.update_experience(quest_id)
         self.avatar_screen.refresh_avatar_view()
+        self.load_quests()
 
+    def confirm_delete_quest(self, quest_id):
+        """Show confirmation dialog before deleting a quest."""
+        self.dialog = MDDialog(
+            title="Delete Quest?",
+            text="Are you sure you want to delete this quest?",
+            buttons=[
+                MDRaisedButton(text="Cancel", on_release=lambda x: self.dialog.dismiss()),
+                MDRaisedButton(text="Delete", on_release=lambda x: self.delete_quest(quest_id)),
+            ],
+        )
+        self.dialog.open()
 
-
-    def change_status(self, quest_box):
-        self.db.swap_quest_status(quest_box.quest_id)
-        self.db.update_experience(quest_box.quest_id)
+    def delete_quest(self, quest_id):
+        """Remove quest and update UI."""
+        self.db.remove_quest(quest_id)
         self.avatar_screen.refresh_avatar_view()
-        quest = self.db.get_quest_by_id(quest_box.quest_id)
-        if quest:
-            # Change color based on new status
-            if quest.completed:
-                quest_box.change_color(0, 1, 0)  # Green (Completed)
-            else:
-                quest_box.change_color(1, 1, 1)  # White (Not Completed)
+        self.load_quests()
+        self.dialog.dismiss()
 
 
 
