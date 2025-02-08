@@ -1,29 +1,18 @@
-from docutils.utils import column_indices
-from kivymd.uix.button import MDIconButton, MDRaisedButton
-from kivy.uix.boxlayout import BoxLayout
-from kivymd.uix.textfield import MDTextField
 from kivymd.uix.label import MDLabel
 from kivymd.uix.pickers import MDDatePicker
-from kivymd.uix.menu import MDDropdownMenu
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.gridlayout import GridLayout
 from kivymd.uix.progressbar import MDProgressBar
 from kivymd.uix.bottomnavigation import MDBottomNavigationItem
-from sqlalchemy import column
-
-from widgets import QuestBox
 from kivy.clock import Clock
 from dataManager import DataManager
 from kivy.uix.widget import Widget
-from kivymd.uix.button import MDIconButton
-
 from kivymd.uix.datatables import MDDataTable
-from kivymd.uix.button import MDIconButton
 from kivy.metrics import dp
-from kivy.uix.boxlayout import BoxLayout
 from kivymd.uix.dialog import MDDialog
+from kivymd.uix.menu import MDDropdownMenu
+from kivymd.uix.textfield import MDTextField
 from kivymd.uix.button import MDRaisedButton
-
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.boxlayout import BoxLayout
 
 class AvatarScreen(MDBottomNavigationItem):
     def __init__(self, **kwargs):
@@ -116,6 +105,7 @@ class AvatarScreen(MDBottomNavigationItem):
             if touch.is_double_tap:
                 self.enable_name_edit()
 
+
     def enable_name_edit(self):
         """Replace the avatar label with an editable text field."""
         # Remove the label from the name box
@@ -205,92 +195,6 @@ class AvatarScreen(MDBottomNavigationItem):
                 category_layout.add_widget(new_bar)  # Add new progress bar
                 self.category_bars[category] = new_bar  # Update reference
 
-#
-# class QuestScreen(MDBottomNavigationItem):
-#     def __init__(self,avatar_screen, **kwargs):
-#         super().__init__(**kwargs)
-#         self.name = 'quests'
-#         self.text = 'All Quests'
-#         self.avatar_screen = avatar_screen
-#
-#         # Data
-#         self.db = DataManager()
-#         self.avatar = self.db.get_avatar()
-#
-#         # UI
-#         self.layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
-#
-#         self.quest_list = GridLayout(cols=1, spacing=5, size_hint_y=None)
-#         self.quest_list.bind(minimum_height=self.quest_list.setter('height'))
-#
-#         scroll_view = ScrollView(size_hint=(1, 1))
-#         scroll_view.add_widget(self.quest_list)
-#         self.layout.add_widget(scroll_view)
-#
-#         self.add_widget(self.layout)
-#
-#         self.load_quests()
-#
-#     def load_quests(self):
-#         """Fetch quests from the database and populate the UI."""
-#         self.quest_list.clear_widgets()  # Clear existing quests
-#         self.quests = self.db.get_avatar_quests(self.avatar)  # Fetch quests
-#
-#         for quest in self.quests:
-#             self.add_quest_ui(quest)
-#
-#     def add_quest_ui(self, quest_data):
-#         """Create a UI quest box from a quest dictionary."""
-#         quest_box = QuestBox(quest_data['id'],orientation='horizontal', size_hint_y=None, height=60, padding=10)
-#
-#         # Quest info
-#         quest_label = MDLabel(text=quest_data["quest_name"])
-#         quest_box.add_widget(quest_label)
-#
-#         date_label = MDLabel(text=quest_data["due_date"])
-#         quest_box.add_widget(date_label)
-#
-#         category_label = MDLabel(text=quest_data["category_name"])
-#         quest_box.add_widget(category_label)
-#
-#         exp_label = MDLabel(text=f"EXP: {quest_data['exp_amount']}", theme_text_color="Secondary")
-#         quest_box.add_widget(exp_label)
-#
-#         if quest_data["completed"]:
-#             quest_box.change_color(0, 1, 0)  # Green
-#
-#         # Quest controls
-#         v_button = MDIconButton(icon="check-circle", pos_hint={'center_y': 0.5},
-#                                 on_release=lambda instance, box=quest_box: self.change_status(box))
-#         quest_box.add_widget(v_button)
-#
-#         delete_button = MDIconButton(icon="delete", pos_hint={'center_y': 0.5},
-#                                      on_release=lambda instance, box=quest_box: self.remove_quest(box))
-#         quest_box.add_widget(delete_button)
-#
-#         self.quest_list.add_widget(quest_box)
-#
-#     def remove_quest(self, quest_box):
-#         """Remove a quest box from the UI."""
-#         self.quest_list.remove_widget(quest_box)
-#         self.db.swap_quest_status(quest_box.quest_id)
-#         self.db.update_experience(quest_box.quest_id)
-#         self.db.remove_quest(quest_box.quest_id)
-#         self.avatar_screen.refresh_avatar_view()
-#
-#
-#
-#     def change_status(self, quest_box):
-#         self.db.swap_quest_status(quest_box.quest_id)
-#         self.db.update_experience(quest_box.quest_id)
-#         self.avatar_screen.refresh_avatar_view()
-#         quest = self.db.get_quest_by_id(quest_box.quest_id)
-#         if quest:
-#             # Change color based on new status
-#             if quest.completed:
-#                 quest_box.change_color(0, 1, 0)  # Green (Completed)
-#             else:
-#                 quest_box.change_color(1, 1, 1)  # White (Not Completed)
 
 class QuestScreen(MDBottomNavigationItem):
     def __init__(self, avatar_screen, **kwargs):
@@ -398,8 +302,7 @@ class AddQuestScreen(MDBottomNavigationItem):
         self.text = 'Add'
         self.quest_screen = quest_screen
         self.avatar_screen = avatar_screen
-        self.db = DataManager()
-
+        self.db = DataManager()  # Database Manager instance
 
         # ScrollView for dynamic layout
         scroll_view = ScrollView(size_hint=(1, 1))
@@ -414,25 +317,17 @@ class AddQuestScreen(MDBottomNavigationItem):
 
         # Date picker field (readonly)
         self.date_input = MDTextField(hint_text='Select Date', readonly=True)
-        self.date_input.bind(focus=self.show_date_picker)  # Open date picker when focused
+        self.date_input.bind(focus=self.show_date_picker)
         self.layout.add_widget(self.date_input)
 
         # Category input field (readonly)
         self.category_input = MDTextField(hint_text='Select Category', readonly=True)
-        self.category_input.bind(focus=self.show_category_menu)  # Open category dropdown when focused
+        self.category_input.bind(focus=self.show_category_menu)
         self.layout.add_widget(self.category_input)
 
-        # Dropdown menu for categories
-        self.category_menu = MDDropdownMenu(
-            caller=self.category_input,
-            items=[
-                {'text': 'wisdom', 'on_release': lambda x='wisdom': self.set_category(x)},
-                {'text': 'constitution', 'on_release': lambda x='constitution': self.set_category(x)},
-                {'text': 'reflexion', 'on_release': lambda x='reflexion': self.set_category(x)},
-                {'text': 'family', 'on_release': lambda x='family': self.set_category(x)},
-            ],
-            width_mult=4
-        )
+        # Initialize the category menu (but fill it dynamically later)
+        self.category_menu = None
+        self.populate_category_menu()  # Fetch categories from DB
 
         # Experience input field (integer)
         self.exp_input = MDTextField(
@@ -442,14 +337,13 @@ class AddQuestScreen(MDBottomNavigationItem):
         )
         self.layout.add_widget(self.exp_input)
 
-
         # Button to add quest
         add_button = MDRaisedButton(
             text='Add',
             size_hint=(None, None),
             size=(150, 50),
             pos_hint={'center_x': 0.5},
-            on_release=self.add_quest  # Call add_quest method
+            on_release=self.add_quest
         )
         self.layout.add_widget(add_button)
 
@@ -457,28 +351,54 @@ class AddQuestScreen(MDBottomNavigationItem):
         scroll_view.add_widget(self.layout)
         self.add_widget(scroll_view)
 
+    def populate_category_menu(self):
+        """Fetch categories from DB and populate dropdown."""
+        categories = self.db.get_categories()  # Fetch categories from DB
+
+        menu_items = []
+        for category in categories:
+            menu_items.append({
+                'text': category.category_name,  # Assuming Category model has a `name` attribute
+                'on_release': lambda x=category.category_name: self.set_category(x)
+            })
+
+        # Initialize the category dropdown menu
+        self.category_menu = MDDropdownMenu(
+            caller=self.category_input,
+            items=menu_items,
+            width_mult=4
+        )
+
+    def show_category_menu(self, instance, value):
+        """Open the category selection menu dynamically."""
+        if value:
+            if self.category_menu:
+                self.category_menu.open()
+            else:
+                print("Category menu is not initialized")
+
+    def set_category(self, category):
+        """Set the selected category in the input field and close the menu."""
+        self.category_input.text = category
+        self.category_menu.dismiss()
+
     def show_date_picker(self, instance, value):
+        """Open date picker when the date input is focused."""
         if value:
             date_dialog = MDDatePicker()
             date_dialog.bind(on_save=self.on_date_selected)
             date_dialog.open()
 
     def on_date_selected(self, instance, value, date_range):
+        """Set the selected date in the input field."""
         self.date_input.text = value.strftime('%Y-%m-%d')
 
-    def show_category_menu(self, instance, value):
-        if value:
-            self.category_menu.open()
-
-    def set_category(self, category):
-        self.category_input.text = category
-        self.category_menu.dismiss()
-
     def add_quest(self, instance):
+        """Save the quest to the database and refresh the quest list."""
         quest_text = self.quest_input.text.strip()
         category_text = self.category_input.text if self.category_input.text else 'No category'
         date_text = self.date_input.text if self.date_input.text else None  # Use None if no date
-        exp_amount = int(self.exp_input.text)
+        exp_amount = int(self.exp_input.text) if self.exp_input.text.isdigit() else 0
 
         if quest_text:
             # Save the quest in the database
