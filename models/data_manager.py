@@ -1,6 +1,6 @@
 import logging
 import datetime
-from database import get_session, Avatar, Category, AvatarCategory, Quest
+from models.database import get_session, Avatar, Category, AvatarCategory, Quest
 
 # Configure logging
 logging.basicConfig(level=logging.ERROR)

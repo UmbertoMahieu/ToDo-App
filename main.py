@@ -1,7 +1,7 @@
 from kivymd.app import MDApp
 from kivymd.uix.bottomnavigation import MDBottomNavigation
 from screens import AvatarScreen, QuestScreen, AddQuestScreen
-import database
+from models import database as db
 
 class ToDoApp(MDApp):
     def build(self):
@@ -14,5 +14,5 @@ class ToDoApp(MDApp):
         return bottom_nav
 
 if __name__ == '__main__':
-    database.setup_database()
+    db.setup_database()
     ToDoApp().run()
