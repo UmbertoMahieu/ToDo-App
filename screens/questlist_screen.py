@@ -62,8 +62,8 @@ class QuestScreen(MDBottomNavigationItem):
         # Load data
         self.load_quests()
 
+    # Fetch quests from the database and populate the list
     def load_quests(self, *args):
-        """Fetch quests from the database and populate the list."""
         self.list_container.clear_widgets()  # Clear existing list items
         search_text = self.search_field.text.lower()
         self.quests = self.db.get_avatar_quests(self.avatar)  # Fetch quests
@@ -98,8 +98,8 @@ class QuestScreen(MDBottomNavigationItem):
 
             self.list_container.add_widget(quest_item)
 
+    # Toggle quest validation status
     def toggle_validate_quest(self, widget, quest_id):
-        """Toggle quest validation status."""
         self.db.swap_quest_status(quest_id)
         self.db.update_experience(quest_id)
         self.avatar_screen.refresh_avatar_view()
@@ -110,8 +110,8 @@ class QuestScreen(MDBottomNavigationItem):
 
         self.load_quests()
 
+    # Show confirmation dialog before deleting a quest
     def confirm_delete_quest(self, quest_id):
-        """Show confirmation dialog before deleting a quest."""
         self.dialog = MDDialog(
             title="Delete Quest?",
             text="Are you sure you want to delete this quest?",

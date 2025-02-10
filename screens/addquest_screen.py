@@ -16,53 +16,65 @@ class AddQuestScreen(MDBottomNavigationItem):
         self.avatar_screen = avatar_screen
         self.db = DataManager()
 
-        # ScrollView for dynamic layout
-        scroll_view = ScrollView(size_hint=(1, 1))
 
-        # BoxLayout for quest input UI elements
-        self.layout = BoxLayout(orientation='vertical', padding=10, spacing=10, size_hint_y=None)
-        self.layout.bind(minimum_height=self.layout.setter('height'))
-
+        ## ELEMENTS
         # Quest input field
-        self.quest_input = MDTextField(hint_text='Add a quest...')
-        self.layout.add_widget(self.quest_input)
+        self.quest_input = MDTextField(
+            hint_text='Add a quest...'
+        )
 
-        # Date picker field (readonly)
-        self.date_input = MDTextField(hint_text='Select Date', readonly=True)
-        self.date_input.bind(focus=self.show_date_picker)
-        self.layout.add_widget(self.date_input)
+        # Date picker field
+        self.date_input = MDTextField(
+            hint_text='Select Date',
+            readonly=True)
 
-        # Category input field (readonly)
-        self.category_input = MDTextField(hint_text='Select Category', readonly=True)
-        self.category_input.bind(focus=self.show_category_menu)
-        self.layout.add_widget(self.category_input)
+        # Category input field
+        self.category_input = MDTextField(
+            hint_text='Select Category',
+            readonly=True
+        )
 
-        # Initialize the category menu (but fill it dynamically later)
-        self.category_menu = None
-        self.populate_category_menu()  # Fetch categories from DB
-
-        # Experience input field (integer)
+        # Experience input field
         self.exp_input = MDTextField(
             hint_text='Enter experience points',
             input_filter='int',
             multiline=False
         )
-        self.layout.add_widget(self.exp_input)
 
         # Button to add quest
-        add_button = MDRaisedButton(
+        self.add_button = MDRaisedButton(
             text='Add',
             size_hint=(None, None),
             size=(150, 50),
             pos_hint={'center_x': 0.5},
             on_release=self.add_quest
         )
-        self.layout.add_widget(add_button)
 
-        # Add layout to scroll view and to the screen
-        scroll_view.add_widget(self.layout)
+
+        #BUILD
+        scroll_view = ScrollView(size_hint=(1, 1))
+        self.layout = BoxLayout(orientation='vertical', padding=10, spacing=10, size_hint_y=None)
+        self.layout.bind(minimum_height=self.layout.setter('height'))
+        self.layout.add_widget(self.quest_input)
+
+        self.date_input.bind(focus=self.show_date_picker)
+        self.layout.add_widget(self.date_input)
+
+        self.category_input.bind(focus=self.show_category_menu)
+        self.layout.add_widget(self.category_input)
+        self.category_menu = None # Initialize the category menu (but fill it dynamically later)
+        self.populate_category_menu()  # Fetch categories from DB
+
+        self.layout.add_widget(self.exp_input)
+
+        self.layout.add_widget(self.add_button)
+
+        scroll_view.add_widget(self.layout) # Add layout to scroll view and to the screen
         self.add_widget(scroll_view)
 
+
+    ## LOGIC
+    # Fetch categories and add them to the view
     def populate_category_menu(self):
         """Fetch categories from DB and populate dropdown."""
         categories = self.db.get_categories()  # Fetch categories from DB
@@ -81,32 +93,32 @@ class AddQuestScreen(MDBottomNavigationItem):
             width_mult=4
         )
 
+    # Open the category selection menu dynamically
     def show_category_menu(self, instance, value):
-        """Open the category selection menu dynamically."""
         if value:
             if self.category_menu:
                 self.category_menu.open()
             else:
                 print("Category menu is not initialized")
 
+    # Set the selected category in the input field and close the menu
     def set_category(self, category):
-        """Set the selected category in the input field and close the menu."""
         self.category_input.text = category
         self.category_menu.dismiss()
 
+    # Open date picker when the date input is focused
     def show_date_picker(self, instance, value):
-        """Open date picker when the date input is focused."""
         if value:
             date_dialog = MDDatePicker()
             date_dialog.bind(on_save=self.on_date_selected)
             date_dialog.open()
 
+    #Set the selected date in the input field
     def on_date_selected(self, instance, value, date_range):
-        """Set the selected date in the input field."""
         self.date_input.text = value.strftime('%Y-%m-%d')
 
+    #Save the quest to the database and refresh the quest list
     def add_quest(self, instance):
-        """Save the quest to the database and refresh the quest list."""
         quest_text = self.quest_input.text.strip()
         category_text = self.category_input.text if self.category_input.text else 'No category'
         date_text = self.date_input.text if self.date_input.text else None  # Use None if no date

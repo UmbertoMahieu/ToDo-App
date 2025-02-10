@@ -15,13 +15,15 @@ class AvatarScreen(MDBottomNavigationItem):
         self.name = 'avatar'
         self.text = 'Avatar'
 
+
         # Data
         self.db = DataManager()
         self.avatar = self.db.get_avatar()
         self.categories = self.db.get_categories()
         self.category_experience = self.db.get_avatar_experience_by_category(self.avatar.id)
 
-        # UI Widgets
+
+        ## ELEMENTS
         self.layout = BoxLayout(
             orientation='vertical',
             padding=[10, 40, 10, 10],
@@ -45,18 +47,31 @@ class AvatarScreen(MDBottomNavigationItem):
             font_style="Caption"
         )
 
-        # View building
+        self.name_box = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=40,
+            spacing=10,
+            size_hint_x=0.5,
+            pos_hint={'center_x': 0.5}
+        )
+
+        ## BUILD
         scroll_view = ScrollView(size_hint=(1, 1))
-        self.name_box = BoxLayout(orientation='horizontal', size_hint_y=None, height=40, spacing=10, size_hint_x=0.5,
-                                  pos_hint={'center_x': 0.5})
+
         self.name_box.add_widget(self.avatar_label)
         self.layout.add_widget(self.name_box)
+
         self.layout.add_widget(self.level_label)
         self.layout.add_widget(Widget(size_hint=(None, None), size=(1, 20)))  # Spacer
+
         self.create_categories_UI()  # Dynamic elements stored inside the functions
         scroll_view.add_widget(self.layout)
+
         self.add_widget(scroll_view)
 
+
+    ## LOGIC
     # Create the categories widgets and progress bars
     def create_categories_UI(self):
         self.category_bars = {}
@@ -94,15 +109,14 @@ class AvatarScreen(MDBottomNavigationItem):
             self.layout.add_widget(category_layout)
             self.category_bars[category] = progress_bar
 
+    # Detect double tap and switch to text field for editing
     def on_name_double_tap(self, instance, touch):
-        """Detect double tap and switch to text field for editing."""
         if instance.collide_point(*touch.pos):  # Check if touch is inside label
             if touch.is_double_tap:
                 self.enable_name_edit()
 
+    #Replace the avatar label with an editable text field
     def enable_name_edit(self):
-        """Replace the avatar label with an editable text field."""
-        # Remove the label from the name box
         self.name_box.remove_widget(self.avatar_label)
 
         # Create an MDTextField pre-filled with the current name
@@ -123,13 +137,13 @@ class AvatarScreen(MDBottomNavigationItem):
         self.name_box.add_widget(self.name_edit)
         Clock.schedule_once(self.set_focus, 0.1)
 
+    #Set the focus to the text input after it is rendered
     def set_focus(self, dt):
-        """Set the focus to the text input after it is rendered."""
         if hasattr(self, 'name_edit'):
             self.name_edit.focus = True
 
+    # When the text field loses focus, update the avatar name
     def on_name_focus(self, instance, value):
-        """When the text field loses focus, update the avatar name."""
         if not value:  # Focus lost
             new_name = instance.text.strip()
             if new_name and new_name != self.avatar.name:
@@ -146,17 +160,17 @@ class AvatarScreen(MDBottomNavigationItem):
             # Optionally, force a UI refresh:
             Clock.schedule_once(lambda dt: self.avatar_label.canvas.ask_update())
 
+    # Refreshes the avatar view UI properly
     def refresh_avatar_view(self):
-        """Refreshes the avatar view UI properly."""
         self.avatar = self.db.get_avatar()
 
-        # ✅ Update the actual UI elements, not just internal variables
+        # Update the actual UI elements, not just internal variables
         self.avatar_label.text = f"{self.avatar.name}"
         self.level_label.text = f"Level : {self.avatar.level}"
 
         # Fetch the updated category experience
         self.category_experience = self.db.get_avatar_experience_by_category(self.avatar.id)
-        # ✅ Ensure the progress bars update
+        # Ensure the progress bars update
         for category in self.categories:
             category_name = category.category_name  # Extract name for comparison
             exp_points = float(self.category_experience.get(category_name, 0))

@@ -2,11 +2,17 @@ from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Boole
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
+DATABASE_URL = "sqlite:///app-db.db"
+engine = create_engine(DATABASE_URL, echo=True)
 
-# Déclaration de la base
+# Create table if not existing
 Base = declarative_base()
+Base.metadata.create_all(engine)
 
-# Définition des modèles
+# Create session
+Session = sessionmaker(bind=engine)
+
+
 class Avatar(Base):
     __tablename__ = "avatar"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -47,25 +53,12 @@ class AvatarCategory(Base):
     avatar = relationship("Avatar", back_populates="categories")
     category = relationship("Category")
 
-
-# Connexion à la base de données
-DATABASE_URL = "sqlite:///app-db.db"
-engine = create_engine(DATABASE_URL, echo=True)
-
-# Création des tables si elles n'existent pas déjà
-Base.metadata.create_all(engine)
-
-# Création de la session
-Session = sessionmaker(bind=engine)
-
-
-# Fonction pour obtenir une session
+# Return a function for data manager
 def get_session():
     session = Session()
     return session
 
-
-# Fonction pour ajouter un avatar par défaut "Unknow"
+# Create a default avatar to initate the app
 def add_default_avatar():
     session = get_session()
 
@@ -78,7 +71,7 @@ def add_default_avatar():
     session.close()
 
 
-# Fonction pour ajouter des catégories par défaut
+# Create basic categories when first intialisation
 def add_default_categories():
     session = get_session()
 
@@ -92,7 +85,7 @@ def add_default_categories():
     session.close()
 
 
-# Fonction pour ajouter des relations avatar-catégorie par défaut
+# Create avatar - categories relationnal table to manage exp by categories by avatar
 def add_avatar_categories():
     session = get_session()
     avatar = session.query(Avatar).first()
@@ -107,11 +100,10 @@ def add_avatar_categories():
                 session.add(avatar_category)
 
         session.commit()
-
     session.close()
 
 
-# Fonction de setup initial pour la base de données
+# Setup the database when first initialization
 def setup_database():
     # Création des tables
     Base.metadata.create_all(engine)

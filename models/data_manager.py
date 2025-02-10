@@ -11,10 +11,12 @@ class DataManager:
     def __init__(self):
         pass
 
+    #return first avatar
     def get_avatar(self):
         with get_session() as session:
             return session.query(Avatar).first()
 
+    #update avatar name
     def update_avatar_name(self, avatar_id, new_name):
         with get_session() as session:
             try:
@@ -30,14 +32,12 @@ class DataManager:
                 logger.exception(f"Error updating avatar name: {e}")
                 return False
 
+    #return all existing quest categories
     def get_categories(self):
         with get_session() as session:
             return session.query(Category).all()
 
-    def get_avatar_categories(self, avatar_id):
-        with get_session() as session:
-            return session.query(AvatarCategory).filter(AvatarCategory.avatar_id == avatar_id).all()
-
+    #return exp by categories for a specific avatar
     def get_avatar_experience_by_category(self, avatar_id):
         with get_session() as session:
             avatar_categories = session.query(AvatarCategory).filter(AvatarCategory.avatar_id == avatar_id).all()
@@ -46,6 +46,7 @@ class DataManager:
                 for avatar_category in avatar_categories
             }
 
+    #update exp level for a category
     def update_experience(self, quest_id):
         with get_session() as session:
             try:
@@ -79,38 +80,29 @@ class DataManager:
                 logger.error(f"⚠ Error updating experience for Quest {quest_id}: {e}")
                 session.rollback()
 
-    def get_quest_by_id(self, quest_id):
-        with get_session() as session:
-            return session.query(Quest).filter_by(id=quest_id).first()
-
+    #update status of completion a quest
     def swap_quest_status(self, quest_id):
         """Toggles the quest's completion status and commits to the DB."""
         with get_session() as session:
             try:
+                #fetch the quest
                 logger.info(f"🔄 Fetching quest with ID {quest_id}")
                 quest = session.query(Quest).filter_by(id=quest_id).first()
                 if not quest:
                     logger.error(f"❌ Quest not found.")
                     return None
 
+                #update quest completion
                 quest.completed = not quest.completed
                 logger.info(f"✅ Updated status: {quest.completed}")
                 session.commit()
-
-                return {
-                    "id": quest.id,
-                    "quest_name": quest.quest_name,
-                    'category_id': quest.category_id,
-                    "completed": quest.completed,
-                    "exp_amount": quest.exp_amount,
-                    "due_date": quest.due_date.isoformat() if quest.due_date else None
-                }
 
             except Exception as e:
                 session.rollback()
                 logger.exception(f"⚠ Error updating quest status for : {e}")
                 return None
 
+    #return all quests related to an avatar
     def get_avatar_quests(self, avatar):
         """Fetches all quests for a given avatar."""
         with get_session() as session:
@@ -128,15 +120,18 @@ class DataManager:
                 for quest in quests
             ]
 
+    #create a new quest
     def add_quest(self, avatar_id, title, category_name, exp_amount, due_date=None):
         """Adds a new quest to the database safely."""
         with get_session() as session:
             try:
+                #fetch category object
                 category = session.query(Category).filter_by(category_name=category_name).first()
                 if not category:
                     logger.error(f"Category '{category_name}' not found.")
                     return
 
+                #create and add new object
                 new_quest = Quest(
                     avatar_id=avatar_id,
                     quest_name=title,
@@ -152,6 +147,7 @@ class DataManager:
                 session.rollback()
                 logger.error(f"⚠ Error adding quest '{title}': {e}")
 
+    #remove a quest
     def remove_quest(self, quest_id):
         with get_session() as session:
             try:
